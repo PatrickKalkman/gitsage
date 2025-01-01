@@ -7,7 +7,6 @@ using Git tags to determine release boundaries.
 
 from typing import Dict, List, Optional
 from datetime import datetime
-import logging
 
 from git import Repo, NULL_TREE
 from git.objects.commit import Commit
