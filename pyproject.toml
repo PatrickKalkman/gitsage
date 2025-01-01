@@ -1,0 +1,36 @@
+[project]
+name = "gitsage"
+version = "0.1.0"
+description = "AI agent that generates release notes from Git commits"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.hatch.version]
+path = "src/gitsage/__about__.py"
+
+[dependency-groups]
+dev = [
+    "hatch>=1.14.0",
+    "ruff>=0.8.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gitsage"]
+
+[tool.ruff]
+# Enable the pycodestyle (`E`) and Pyflakes (`F`) rules by default
+select = ["E", "F"]
+# Python version compatibility
+target-version = "py310"
+# Line length matches black's default
+line-length = 88
+# Allow unused variables when underscore-prefixed
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
