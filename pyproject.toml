@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "AI agent that generates release notes from Git commits"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "gitpython>=3.1.43",
+    "langchain>=0.3.13",
+    "langchain-core>=0.3.28",
+    "langgraph>=0.2.60",
+]
 
 [tool.hatch.version]
 path = "src/gitsage/__about__.py"
