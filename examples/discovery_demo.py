@@ -2,9 +2,9 @@
 """
 examples/discovery_demo.py
 
-Demonstrates the GitSage discovery node functionality by analyzing
-the GitSage repository itself. This shows the first step of the
-GitSage pipeline: commit discovery and analysis.
+Demonstrates the GitSage discovery node functionality by analyzing the GitSage
+repository itself. This shows the first step of the GitSage pipeline: commit
+discovery and analysis.
 """
 
 import argparse
@@ -12,6 +12,7 @@ import os
 import sys
 
 from gitsage.nodes.discovery import load_discovery_node
+from gitsage.agents.state import AgentState
 
 
 def parse_args():
@@ -55,9 +56,8 @@ Author: {commit.author}
 Date: {commit.date.strftime('%Y-%m-%d %H:%M:%S')}
 Files Changed ({len(commit.files_changed)}):
   - {files_changed_str}
-Message:
-{commit.message}
-{"=" * 80}
+Message: {commit.message}
+{'=' * 80}
 """
 
 
@@ -73,16 +73,22 @@ def main():
         # Initialize the discovery node
         node = load_discovery_node(repo_path)
 
-        # Run the node with optional since_ref
-        initial_state = {}
+        # Create initial state
+        initial_state: AgentState = {}
         if args.since_ref is not None:
             initial_state["since_ref"] = args.since_ref
 
+        # Run the node
         state = node.run(initial_state)
 
         # Print summary
         print(f"\nDiscovered {state['commit_count']} commits")
-        print(f"Last release tag: {state['last_release_tag']}")
+        print(f"Context: {state['context']}")
+        print(f"Last tag: {state['last_tag'] or 'No tags found'}")
+        if state["start_ref"]:
+            print(f"Commit range: {state['start_ref']}..{state['end_ref']}")
+        else:
+            print(f"Showing: All commits up to {state['end_ref']}")
 
         # Print detailed commit information
         print("\nDetailed commit information:")

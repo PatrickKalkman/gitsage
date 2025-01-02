@@ -1,42 +1,13 @@
 """
 GitSage commit discovery node with intelligent commit boundary detection.
-
-This module automatically determines the relevant commit range for release notes
-based on the repository's current state and tag history.
 """
 
-from typing import Dict, List, Optional, Tuple
-from datetime import datetime
-
+from typing import List, Optional, Tuple
 from git import Repo, NULL_TREE, Tag
 from git.objects.commit import Commit
-from pydantic import BaseModel, Field
+from datetime import datetime
 
-
-class CommitInfo(BaseModel):
-    """Structured representation of a Git commit."""
-
-    hash: str = Field(..., description="The commit hash")
-    message: str = Field(..., description="The commit message")
-    author: str = Field(..., description="The commit author's name")
-    date: datetime = Field(..., description="The commit timestamp")
-    files_changed: List[str] = Field(
-        default_factory=list, description="Files modified in this commit"
-    )
-
-    @classmethod
-    def from_git_commit(cls, commit: Commit) -> "CommitInfo":
-        """Create a CommitInfo instance from a GitPython Commit object."""
-        parent = commit.parents[0] if commit.parents else NULL_TREE
-        files_changed = [item.a_path or item.b_path for item in commit.diff(parent)]
-
-        return cls(
-            hash=commit.hexsha,
-            message=commit.message.strip(),
-            author=commit.author.name,
-            date=datetime.fromtimestamp(commit.authored_date),
-            files_changed=files_changed,
-        )
+from gitsage.agents.state import AgentState, CommitInfo
 
 
 class CommitDiscoveryNode:
@@ -48,11 +19,7 @@ class CommitDiscoveryNode:
         self.repo = Repo(repo_path)
 
     def _get_release_tags(self) -> List[Tag]:
-        """Get all release tags sorted by version number (highest first).
-
-        Since Git tags don't reliably store creation time, we'll sort by version number
-        assuming semantic versioning (e.g., v1.1.0 > v1.0.0).
-        """
+        """Get all release tags sorted by version number (highest first)."""
 
         def version_key(tag: Tag) -> tuple:
             # Remove 'v' prefix if present and split into version components
@@ -68,37 +35,50 @@ class CommitDiscoveryNode:
                 # If tag doesn't follow version format, put it at the end
                 return (-1, -1, -1)
 
-        # Sort tags by version number
-        tags = sorted(self.repo.tags, key=version_key, reverse=True)
+        return sorted(self.repo.tags, key=version_key, reverse=True)
 
-        return tags
+    def _create_commit_info(self, commit: Commit) -> CommitInfo:
+        """Create a CommitInfo instance from a GitPython Commit object."""
+        parent = commit.parents[0] if commit.parents else NULL_TREE
+        diff_index = commit.diff(parent)
+        files_changed = []
+
+        for diff in diff_index:
+            if diff.a_path:
+                files_changed.append(diff.a_path)
+            if diff.b_path and diff.b_path != diff.a_path:
+                files_changed.append(diff.b_path)
+
+        return CommitInfo(
+            hash=commit.hexsha,
+            message=commit.message.strip(),
+            author=commit.author.name,
+            date=datetime.fromtimestamp(commit.authored_date),
+            files_changed=files_changed,
+        )
 
     def _get_commit_range(self) -> Tuple[Optional[str], str]:
-        """Automatically determine the appropriate commit range for release notes.
-
-        The logic is:
-        1. If no tags exist, include all commits.
-        2. If HEAD != latest_tag.commit, show changes since latest_tag.
-        3. Otherwise (HEAD == latest_tag.commit):
-           - If at least two tags exist, show changes between the two latest tags.
-           - Else (only one tag), just show everything up to that single tag.
-        """
+        """Automatically determine the appropriate commit range for release notes."""
         tags = self._get_release_tags()
+
         if not tags:
-            return None, "HEAD"
+            return None, "HEAD"  # Get all commits
 
         latest_tag = tags[0]
+        head_commit = self.repo.head.commit
+        latest_tag_commit = latest_tag.commit
 
-        # If HEAD points to the same commit as the latest tag, there are no new commits
-        if self.repo.head.commit == latest_tag.commit:
+        # Check if HEAD is at the latest tag
+        if head_commit == latest_tag_commit:
             if len(tags) >= 2:
+                # Show changes in the last release
                 previous_tag = tags[1]
                 return previous_tag.name, latest_tag.name
             else:
-                # Only one tag exists, and HEAD == that tag
+                # Only one tag exists and we're at it
                 return None, latest_tag.name
         else:
-            # HEAD has moved on since the latest tag => unreleased changes exist
+            # There are new changes since the last tag
             return latest_tag.name, "HEAD"
 
     def _get_commits(self, start_ref: Optional[str], end_ref: str) -> List[CommitInfo]:
@@ -109,37 +89,25 @@ class CommitDiscoveryNode:
                 commits = list(self.repo.iter_commits(rev_range))
             else:
                 commits = list(self.repo.iter_commits(end_ref))
-            return [CommitInfo.from_git_commit(commit) for commit in commits]
+
+            return [self._create_commit_info(commit) for commit in commits]
         except Exception as e:
             print(f"Error retrieving commits: {str(e)}")
             return []
 
-    def run(self, state: Dict) -> Dict:
-        """Execute the commit discovery process.
-
-        Args:
-            state: The current agent state. If 'since_ref' is provided, it
-            overrides automatic range detection.
-
-        Returns:
-            Updated state containing discovered commits and context.
-        """
-        tags = self._get_release_tags()
-
-        # Allow explicit override
+    def run(self, state: AgentState) -> AgentState:
+        """Execute the commit discovery process."""
+        # Handle explicit reference override
         if "since_ref" in state:
             start_ref = state["since_ref"]
             end_ref = "HEAD"
-        else:
-            # Automatically determine the range
-            start_ref, end_ref = self._get_commit_range()
-
-        commits = self._get_commits(start_ref, end_ref)
-
-        # Determine context
-        if "since_ref" in state:
             context = f"commits since {start_ref}"
         else:
+            # Automatically determine the appropriate range
+            start_ref, end_ref = self._get_commit_range()
+
+            # Determine context based on the range
+            tags = self._get_release_tags()
             if not tags:
                 context = "initial release - showing all commits"
             elif end_ref == "HEAD":
@@ -147,18 +115,22 @@ class CommitDiscoveryNode:
             else:
                 context = "changes in last release"
 
-        current_tags = self._get_release_tags()
+        commits = self._get_commits(start_ref, end_ref)
+        tags = self._get_release_tags()
 
-        return {
+        # Create new state with updates
+        new_state: AgentState = {
             **state,
             "commits": commits,
             "commit_count": len(commits),
             "context": context,
             "start_ref": start_ref,
             "end_ref": end_ref,
-            "last_tag": current_tags[0].name if current_tags else None,
-            "all_tags": [tag.name for tag in current_tags],
+            "last_tag": tags[0].name if tags else None,
+            "all_tags": [tag.name for tag in tags],
         }
+
+        return new_state
 
 
 def load_discovery_node(repo_path: str) -> CommitDiscoveryNode:
