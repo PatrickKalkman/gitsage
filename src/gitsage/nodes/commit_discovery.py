@@ -7,7 +7,7 @@ from git import Repo, NULL_TREE, Tag
 from git.objects.commit import Commit
 from datetime import datetime
 
-from gitsage.agents.state import AgentState, CommitInfo
+from gitsage.types.state import AgentState, CommitInfo
 
 
 class CommitDiscoveryNode:

@@ -4,7 +4,7 @@ import pytest
 from git import Repo
 from pathlib import Path
 
-from gitsage.nodes.discovery import load_discovery_node
+from gitsage.nodes.commit_discovery import load_discovery_node
 
 
 def create_commit(repo: Repo, file_path: Path, content: str, message: str) -> None:
