@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from typing import List, Dict, Optional
 from datetime import datetime
 
-from gitsage.types.base import CommitInfo, AgentState
+from gitsage.types.base import CommitInfo
+from gitsage.types.state import AgentState
 
 
 @dataclass

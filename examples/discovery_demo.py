@@ -11,8 +11,8 @@ import argparse
 import os
 import sys
 
-from gitsage.nodes.discovery import load_discovery_node
-from gitsage.agents.state import AgentState
+from gitsage.nodes.commit_discovery import load_discovery_node
+from gitsage.types.state import AgentState
 
 
 def parse_args():
