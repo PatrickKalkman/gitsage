@@ -162,7 +162,7 @@ class ReleaseGeneratorNode:
 
         if stats:
             summary_parts.append(
-                f"This release includes {', '.join(stats[:-1])} and {stats[-1]} changes."
+                f"This release includes {', '.join(stats[:-1])} and {stats[-1]} changes"
                 if len(stats) > 1
                 else f"This release includes {stats[0]} changes."
             )
