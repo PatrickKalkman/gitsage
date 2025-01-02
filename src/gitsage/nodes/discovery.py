@@ -71,13 +71,6 @@ class CommitDiscoveryNode:
         # Sort tags by version number
         tags = sorted(self.repo.tags, key=version_key, reverse=True)
 
-        # Debug output
-        print("\nTag sorting debug info:")
-        for tag in tags:
-            print(
-                f"Tag: {tag.name}, Commit date: {datetime.fromtimestamp(tag.commit.committed_date)}"
-            )
-
         return tags
 
     def _get_commit_range(self) -> Tuple[Optional[str], str]:
