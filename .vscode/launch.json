@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Test Discovery",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/.venv/bin/pytest", // Adjust path to your pytest executable
+      "args": [
+        "./tests" // or whatever folder you want to test
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

@@ -2,53 +2,194 @@
 
 import pytest
 from git import Repo
+from pathlib import Path
 
 from gitsage.nodes.discovery import load_discovery_node
 
 
+def create_commit(repo: Repo, file_path: Path, content: str, message: str) -> None:
+    """Helper function to create a commit in the test repository."""
+    file_path.write_text(content)
+    repo.index.add([str(file_path.relative_to(file_path.parent))])
+    return repo.index.commit(message)
+
+
 @pytest.fixture
 def temp_git_repo(tmp_path):
-    """Create a temporary Git repository with commits and tags for testing."""
+    """Create a basic temporary Git repository."""
     repo_path = tmp_path / "test_repo"
     repo_path.mkdir()
-    repo = Repo.init(repo_path)
+    return Repo.init(repo_path)
 
-    # Create initial commit
+
+@pytest.fixture
+def initial_repo(temp_git_repo):
+    """Scenario 1: Repository with just commits, no tags yet."""
+    repo = temp_git_repo
+    repo_path = Path(repo.working_dir)
+
+    # Create multiple commits
     test_file = repo_path / "test.txt"
-    test_file.write_text("Initial content")
-    repo.index.add(["test.txt"])
-    repo.index.commit("Initial commit")
-
-    # Add a release tag
-    repo.create_tag("v1.0.0")
-
-    # Add another commit
-    test_file.write_text("Updated content")
-    repo.index.add(["test.txt"])
-    repo.index.commit("Update content")
+    create_commit(repo, test_file, "Initial content", "Initial commit")
+    create_commit(repo, test_file, "Feature A", "Add feature A")
+    create_commit(repo, test_file, "Feature B", "Add feature B")
 
     return repo_path
 
 
-def test_commit_discovery_with_tag(temp_git_repo):
-    """Test commit discovery with release tags."""
-    node = load_discovery_node(str(temp_git_repo))
+@pytest.fixture
+def single_tag_repo(temp_git_repo):
+    """Scenario 2: Repository with one tag and unreleased changes."""
+    repo = temp_git_repo
+    repo_path = Path(repo.working_dir)
+    test_file = repo_path / "test.txt"
+
+    # Create initial commits and tag
+    create_commit(repo, test_file, "Initial content", "Initial commit")
+    create_commit(repo, test_file, "Feature A", "Add feature A")
+    repo.create_tag("v1.0.0")
+
+    # Add unreleased changes
+    create_commit(repo, test_file, "Feature B", "Add feature B")
+    create_commit(repo, test_file, "Feature C", "Add feature C")
+
+    return repo_path
+
+
+@pytest.fixture
+def multi_tag_repo(temp_git_repo):
+    """Scenario 3: Repository with multiple tags, no unreleased changes."""
+    repo = temp_git_repo
+    repo_path = Path(repo.working_dir)
+    test_file = repo_path / "test.txt"
+
+    # First release
+    create_commit(repo, test_file, "Initial content", "Initial commit")
+    create_commit(repo, test_file, "Feature A", "Add feature A")
+    repo.create_tag("v1.0.0")
+
+    # Second release
+    create_commit(repo, test_file, "Feature B", "Add feature B")
+    create_commit(repo, test_file, "Feature C", "Add feature C")
+    repo.create_tag("v1.1.0")
+
+    return repo_path
+
+
+@pytest.fixture
+def multi_tag_unreleased_repo(temp_git_repo):
+    """Scenario 4: Repository with multiple tags and unreleased changes."""
+    repo = temp_git_repo
+    repo_path = Path(repo.working_dir)
+    test_file = repo_path / "test.txt"
+
+    # First release
+    create_commit(repo, test_file, "Initial content", "Initial commit")
+    repo.create_tag("v1.0.0")
+
+    # Second release
+    create_commit(repo, test_file, "Feature A", "Add feature A")
+    repo.create_tag("v1.1.0")
+
+    # Unreleased changes
+    create_commit(repo, test_file, "Feature B", "Add feature B")
+    create_commit(repo, test_file, "Feature C", "Add feature C")
+
+    return repo_path
+
+
+def test_initial_repo_discovery(initial_repo):
+    """Test Scenario 1: Repository with no tags."""
+    node = load_discovery_node(str(initial_repo))
     state = node.run({})
 
-    # Should only include commits after v1.0.0
-    assert state["commit_count"] == 1
-    assert len(state["commits"]) == 1
-    assert state["last_release_tag"] == "v1.0.0"
+    print(f"State: {state}")  # Print the state to see what it looks like
 
-    commit = state["commits"][0]
-    assert "test.txt" in commit.files_changed
-    assert commit.message == "Update content"
+    assert state["commit_count"] == 3
+    assert state["context"] == "initial release - showing all commits"
+    assert state["start_ref"] is None
+    assert state["end_ref"] == "HEAD"
+    assert state["last_tag"] is None
+    assert state["all_tags"] == []
+
+    # Verify all commits are included
+    messages = [c.message.strip() for c in state["commits"]]
+    assert "Add feature B" in messages
+    assert "Add feature A" in messages
+    assert "Initial commit" in messages
 
 
-def test_commit_discovery_without_tag(temp_git_repo):
-    """Test commit discovery with explicit reference override."""
-    node = load_discovery_node(str(temp_git_repo))
-    state = node.run({"since_ref": None})  # Explicitly request all commits
+def test_single_tag_with_unreleased(single_tag_repo):
+    """Test Scenario 2: Repository with one tag and unreleased changes."""
+    node = load_discovery_node(str(single_tag_repo))
+    state = node.run({})
 
-    assert state["commit_count"] == 2  # Should include all commits
-    assert len(state["commits"]) == 2
+    assert state["commit_count"] == 2  # Two commits after v1.0.0
+    assert state["context"] == "unreleased changes since last tag"
+    assert state["start_ref"] == "v1.0.0"
+    assert state["end_ref"] == "HEAD"
+    assert state["last_tag"] == "v1.0.0"
+
+    # Verify only unreleased commits are included
+    messages = [c.message.strip() for c in state["commits"]]
+    assert "Add feature C" in messages
+    assert "Add feature B" in messages
+    assert "Add feature A" not in messages
+    assert "Initial commit" not in messages
+
+
+def test_multi_tag_no_unreleased(multi_tag_repo):
+    """Test Scenario 3: Repository with multiple tags, no unreleased changes."""
+    node = load_discovery_node(str(multi_tag_repo))
+    state = node.run({})
+
+    assert state["commit_count"] == 2  # Commits between v1.0.0 and v1.1.0
+    assert state["context"] == "changes in last release"
+    assert state["start_ref"] == "v1.0.0"
+    assert state["end_ref"] == "v1.1.0"
+    assert state["last_tag"] == "v1.1.0"
+
+    # Verify only commits between tags are included
+    messages = [c.message.strip() for c in state["commits"]]
+    assert "Add feature C" in messages
+    assert "Add feature B" in messages
+    assert "Add feature A" not in messages
+    assert "Initial commit" not in messages
+
+
+def test_multi_tag_with_unreleased(multi_tag_unreleased_repo):
+    """Test Scenario 4: Repository with multiple tags and unreleased changes."""
+    node = load_discovery_node(str(multi_tag_unreleased_repo))
+    state = node.run({})
+
+    # In this case, we have 3 commits: the two after v1.1.0 and the v1.1.0 commit itself
+    assert state["commit_count"] == 2  # Only commits after v1.1.0
+    assert state["context"] == "unreleased changes since last tag"
+    assert state["start_ref"] == "v1.1.0"
+    assert state["end_ref"] == "HEAD"
+    assert state["last_tag"] == "v1.1.0"
+
+    # Verify only unreleased commits are included
+    messages = [c.message.strip() for c in state["commits"]]
+    assert "Add feature C" in messages
+    assert "Add feature B" in messages
+    assert "Add feature A" not in messages
+    assert "Initial commit" not in messages
+
+
+def test_explicit_reference_override(multi_tag_unreleased_repo):
+    """Test explicit reference override using since_ref."""
+    node = load_discovery_node(str(multi_tag_unreleased_repo))
+    state = node.run({"since_ref": "v1.0.0"})
+
+    assert state["commit_count"] == 3  # Commits after v1.0.0
+    assert state["start_ref"] == "v1.0.0"
+    assert state["end_ref"] == "HEAD"
+    assert state["context"] == "commits since v1.0.0"
+
+    # Verify all commits since v1.0.0 are included
+    messages = [c.message.strip() for c in state["commits"]]
+    assert "Add feature C" in messages
+    assert "Add feature B" in messages
+    assert "Add feature A" in messages
+    assert "Initial commit" not in messages

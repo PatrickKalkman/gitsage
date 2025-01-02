@@ -1,14 +1,14 @@
 """
-GitSage commit discovery node.
+GitSage commit discovery node with intelligent commit boundary detection.
 
-This module handles the retrieval and initial processing of Git commits,
-using Git tags to determine release boundaries.
+This module automatically determines the relevant commit range for release notes
+based on the repository's current state and tag history.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 
-from git import Repo, NULL_TREE
+from git import Repo, NULL_TREE, Tag
 from git.objects.commit import Commit
 from pydantic import BaseModel, Field
 
@@ -40,63 +40,131 @@ class CommitInfo(BaseModel):
 
 
 class CommitDiscoveryNode:
-    """Node responsible for discovering and retrieving Git commits since
-    the latest release tag."""
+    """Node responsible for intelligently discovering relevant commits
+    for release notes."""
 
     def __init__(self, repo_path: str):
         """Initialize the node with a repository path."""
         self.repo = Repo(repo_path)
 
-    def _get_latest_release_tag(self) -> Optional[str]:
-        """Find the most recent release tag by commit date."""
-        tags = sorted(
-            self.repo.tags, key=lambda t: t.commit.committed_date, reverse=True
-        )
-        return tags[0].name if tags else None
+    def _get_release_tags(self) -> List[Tag]:
+        """Get all release tags sorted by version number (highest first).
 
-    def _get_commits_since(self, since_ref: Optional[str] = None) -> List[CommitInfo]:
-        """Retrieve commits since the specified reference or all commits
-        if no reference."""
-        try:
-            if since_ref:
-                print(f"We are here: {since_ref}")
-                # Get commits between the reference and HEAD
-                commits = list(self.repo.iter_commits(f"{since_ref}..HEAD"))
+        Since Git tags don't reliably store creation time, we'll sort by version number
+        assuming semantic versioning (e.g., v1.1.0 > v1.0.0).
+        """
+
+        def version_key(tag: Tag) -> tuple:
+            # Remove 'v' prefix if present and split into version components
+            name = tag.name
+            if name.startswith("v"):
+                name = name[1:]
+            try:
+                # Split version into numeric components
+                parts = [int(x) for x in name.split(".")]
+                # Pad with zeros if needed to ensure consistent comparison
+                return tuple(parts + [0] * (3 - len(parts)))
+            except (ValueError, AttributeError):
+                # If tag doesn't follow version format, put it at the end
+                return (-1, -1, -1)
+
+        # Sort tags by version number
+        tags = sorted(self.repo.tags, key=version_key, reverse=True)
+
+        # Debug output
+        print("\nTag sorting debug info:")
+        for tag in tags:
+            print(
+                f"Tag: {tag.name}, Commit date: {datetime.fromtimestamp(tag.commit.committed_date)}"
+            )
+
+        return tags
+
+    def _get_commit_range(self) -> Tuple[Optional[str], str]:
+        """Automatically determine the appropriate commit range for release notes.
+
+        The logic is:
+        1. If no tags exist, include all commits.
+        2. If HEAD != latest_tag.commit, show changes since latest_tag.
+        3. Otherwise (HEAD == latest_tag.commit):
+           - If at least two tags exist, show changes between the two latest tags.
+           - Else (only one tag), just show everything up to that single tag.
+        """
+        tags = self._get_release_tags()
+        if not tags:
+            return None, "HEAD"
+
+        latest_tag = tags[0]
+
+        # If HEAD points to the same commit as the latest tag, there are no new commits
+        if self.repo.head.commit == latest_tag.commit:
+            if len(tags) >= 2:
+                previous_tag = tags[1]
+                return previous_tag.name, latest_tag.name
             else:
-                # Get all commits when no reference is provided
-                commits = list(self.repo.iter_commits())
-                print(f"Retrieved {len(commits)} commits")
+                # Only one tag exists, and HEAD == that tag
+                return None, latest_tag.name
+        else:
+            # HEAD has moved on since the latest tag => unreleased changes exist
+            return latest_tag.name, "HEAD"
+
+    def _get_commits(self, start_ref: Optional[str], end_ref: str) -> List[CommitInfo]:
+        """Retrieve commits in the specified range."""
+        try:
+            if start_ref:
+                rev_range = f"{start_ref}..{end_ref}"
+                commits = list(self.repo.iter_commits(rev_range))
+            else:
+                commits = list(self.repo.iter_commits(end_ref))
             return [CommitInfo.from_git_commit(commit) for commit in commits]
         except Exception as e:
-            # Log the error and return an empty list to maintain operation
             print(f"Error retrieving commits: {str(e)}")
             return []
 
     def run(self, state: Dict) -> Dict:
-        """
-        Execute the commit discovery process.
+        """Execute the commit discovery process.
 
         Args:
-            state: The current agent state. If 'since_ref' is provided, it will
-                  override tag-based release detection. If explicitly None,
-                  retrieves all commits.
+            state: The current agent state. If 'since_ref' is provided, it
+            overrides automatic range detection.
 
         Returns:
-            Updated state containing discovered commits and release information.
+            Updated state containing discovered commits and context.
         """
-        # Check if since_ref is explicitly set in state
-        if "since_ref" in state:
-            since_ref = state["since_ref"]  # Use the explicit value, even if None
-        else:
-            since_ref = self._get_latest_release_tag()
+        tags = self._get_release_tags()
 
-        commits = self._get_commits_since(since_ref)
+        # Allow explicit override
+        if "since_ref" in state:
+            start_ref = state["since_ref"]
+            end_ref = "HEAD"
+        else:
+            # Automatically determine the range
+            start_ref, end_ref = self._get_commit_range()
+
+        commits = self._get_commits(start_ref, end_ref)
+
+        # Determine context
+        if "since_ref" in state:
+            context = f"commits since {start_ref}"
+        else:
+            if not tags:
+                context = "initial release - showing all commits"
+            elif end_ref == "HEAD":
+                context = "unreleased changes since last tag"
+            else:
+                context = "changes in last release"
+
+        current_tags = self._get_release_tags()
 
         return {
             **state,
             "commits": commits,
             "commit_count": len(commits),
-            "last_release_tag": since_ref,
+            "context": context,
+            "start_ref": start_ref,
+            "end_ref": end_ref,
+            "last_tag": current_tags[0].name if current_tags else None,
+            "all_tags": [tag.name for tag in current_tags],
         }
 
 
