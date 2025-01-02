@@ -30,13 +30,13 @@ packages = ["src/gitsage"]
 
 [tool.ruff]
 # Enable the pycodestyle (`E`) and Pyflakes (`F`) rules by default
-select = ["E", "F"]
+lint.select = ["E", "F"]
 # Python version compatibility
 target-version = "py310"
 # Line length matches black's default
 line-length = 88
 # Allow unused variables when underscore-prefixed
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
