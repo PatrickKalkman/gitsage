@@ -26,14 +26,14 @@ class AnalysisPlanningNode:
     system
     You are an expert at analyzing git commits for clarity and completeness.
     Given a commit message,you analyze its effectiveness in communicating changes.
-    Return a JSON object with your analysis.
+    Return only a JSON object with no additional code or text with your analysis.
 
     user
     Analyze this git commit message for clarity and completeness:
 
     COMMIT_MESSAGE: {commit_message}
 
-    Evaluate and provide a JSON response with these keys:
+    Evaluate and provide a JSON response with only these keys:
     - message_clarity: float between 0 and 1
     - needs_code_review: boolean
     - suggested_improvements: list of strings
@@ -53,7 +53,7 @@ class AnalysisPlanningNode:
     COMMIT_MESSAGE: {commit_message}
     CODE_CHANGES: {code_changes}
 
-    Provide a JSON response with these keys:
+    Provide only a JSON response with no additional code or text with only these keys:
     - functional_changes: string describing what changed functionally
     - impact_assessment: string describing the impact on the codebase
     - risk_factors: list of potential risks or considerations
