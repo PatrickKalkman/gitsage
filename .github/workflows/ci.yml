@@ -31,8 +31,6 @@ jobs:
       run: uv run ruff check src tests
       
     - name: Run tests
-      env:
-        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}  
       run: uv run pytest tests/
   
   build:
