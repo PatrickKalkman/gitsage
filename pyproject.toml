@@ -6,9 +6,11 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "gitpython>=3.1.43",
+    "langchain-groq>=0.2.2",
     "langchain>=0.3.13",
     "langchain-core>=0.3.28",
     "langgraph>=0.2.60",
+    "python-dotenv>=1.0.1",
 ]
 
 [tool.hatch.version]
@@ -17,8 +19,10 @@ path = "src/gitsage/__about__.py"
 [dependency-groups]
 dev = [
     "hatch>=1.14.0",
+    "pytest-asyncio>=0.25.1",
     "pytest>=8.3.4",
     "ruff>=0.8.4",
+    "pytest-mock>=3.14.0",
 ]
 
 [build-system]
@@ -31,12 +35,12 @@ packages = ["src/gitsage"]
 [tool.ruff]
 # Enable the pycodestyle (`E`) and Pyflakes (`F`) rules by default
 lint.select = ["E", "F"]
+# Allow unused variables when underscore-prefixed
+lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 # Python version compatibility
 target-version = "py310"
 # Line length matches black's default
-line-length = 88
-# Allow unused variables when underscore-prefixed
-lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+line-length = 120
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
