@@ -25,12 +25,15 @@ def api_key():
 @pytest.fixture
 def mock_message_analysis():
     """Mock response for commit message analysis."""
+    suggestion = (
+        "Consider adding more details about the implementation, "
+        "such as where the authentication was added (files, functions) "
+        "and how it integrates with the existing system."
+    )
     return {
         "message_clarity": 0.9,
         "needs_code_review": True,
-        "suggested_improvements": [
-            "Consider adding more details about the implementation, such as where the authentication was added (files, functions) and how it integrates with the existing system."
-        ],
+        "suggested_improvements": [suggestion],
         "is_breaking_change": False,
     }
 
