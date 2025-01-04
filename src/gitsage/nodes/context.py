@@ -122,7 +122,8 @@
 #             semantic_type = self._infer_semantic_type(diff, commit.message, needs_review)
 
 #             context = CodeChangeContext(
-#                 file_path=file_path, diff=diff, change_type=change_type, language=language, semantic_type=semantic_type
+#                 file_path=file_path, diff=diff, change_type=change_type, language=language,
+#                   semantic_type=semantic_type
 #             )
 #             code_contexts.append(context)
 
