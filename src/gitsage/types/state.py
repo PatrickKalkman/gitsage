@@ -16,6 +16,10 @@ class AgentState(TypedDict):
     Each node adds or modifies specific fields.
     """
 
+    # Input
+    repo_path: str
+    groq_api_key: str
+
     # CommitDiscovery Node Output
     commits: List[CommitInfo]
     commit_count: int

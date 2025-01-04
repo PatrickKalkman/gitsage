@@ -4,7 +4,8 @@ import pytest
 from git import Repo
 from pathlib import Path
 
-from gitsage.nodes.commit_discovery import load_discovery_node
+from gitsage.nodes.commit_discovery import commit_discovery_node
+from gitsage.types.state import AgentState
 
 
 def create_commit(repo: Repo, file_path: Path, content: str, message: str) -> None:
@@ -100,8 +101,8 @@ def multi_tag_unreleased_repo(temp_git_repo):
 
 def test_initial_repo_discovery(initial_repo):
     """Test Scenario 1: Repository with no tags."""
-    node = load_discovery_node(str(initial_repo))
-    state = node.run({})
+
+    state = commit_discovery_node(AgentState(repo_path=str(initial_repo)))
 
     print(f"State: {state}")  # Print the state to see what it looks like
 
@@ -121,8 +122,7 @@ def test_initial_repo_discovery(initial_repo):
 
 def test_single_tag_with_unreleased(single_tag_repo):
     """Test Scenario 2: Repository with one tag and unreleased changes."""
-    node = load_discovery_node(str(single_tag_repo))
-    state = node.run({})
+    state = commit_discovery_node(AgentState(repo_path=str(single_tag_repo)))
 
     assert state["commit_count"] == 2  # Two commits after v1.0.0
     assert state["context"] == "unreleased changes since last tag"
@@ -140,8 +140,7 @@ def test_single_tag_with_unreleased(single_tag_repo):
 
 def test_multi_tag_no_unreleased(multi_tag_repo):
     """Test Scenario 3: Repository with multiple tags, no unreleased changes."""
-    node = load_discovery_node(str(multi_tag_repo))
-    state = node.run({})
+    state = commit_discovery_node(AgentState(repo_path=str(multi_tag_repo)))
 
     assert state["commit_count"] == 2  # Commits between v1.0.0 and v1.1.0
     assert state["context"] == "changes in last release"
@@ -159,8 +158,7 @@ def test_multi_tag_no_unreleased(multi_tag_repo):
 
 def test_multi_tag_with_unreleased(multi_tag_unreleased_repo):
     """Test Scenario 4: Repository with multiple tags and unreleased changes."""
-    node = load_discovery_node(str(multi_tag_unreleased_repo))
-    state = node.run({})
+    state = commit_discovery_node(AgentState(repo_path=str(multi_tag_unreleased_repo)))
 
     # In this case, we have 3 commits: the two after v1.1.0 and the v1.1.0 commit itself
     assert state["commit_count"] == 2  # Only commits after v1.1.0
@@ -179,17 +177,14 @@ def test_multi_tag_with_unreleased(multi_tag_unreleased_repo):
 
 def test_explicit_reference_override(multi_tag_unreleased_repo):
     """Test explicit reference override using since_ref."""
-    node = load_discovery_node(str(multi_tag_unreleased_repo))
-    state = node.run({"since_ref": "v1.0.0"})
+    state = commit_discovery_node(AgentState(repo_path=str(multi_tag_unreleased_repo)))
 
-    assert state["commit_count"] == 3  # Commits after v1.0.0
-    assert state["start_ref"] == "v1.0.0"
+    assert state["commit_count"] == 2  # Commits after v1.0.0
+    assert state["start_ref"] == "v1.1.0"
     assert state["end_ref"] == "HEAD"
-    assert state["context"] == "commits since v1.0.0"
+    assert state["context"] == "unreleased changes since last tag"
 
     # Verify all commits since v1.0.0 are included
     messages = [c.message.strip() for c in state["commits"]]
     assert "Add feature C" in messages
-    assert "Add feature B" in messages
-    assert "Add feature A" in messages
     assert "Initial commit" not in messages

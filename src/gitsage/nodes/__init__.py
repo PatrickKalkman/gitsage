@@ -1,5 +1,5 @@
 """GitSage processing nodes."""
 
-from .commit_discovery import load_discovery_node
+from .commit_discovery import commit_discovery_node
 
-__all__ = ["load_discovery_node"]
+__all__ = ["commit_discovery_node"]

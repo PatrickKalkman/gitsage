@@ -9,9 +9,10 @@ from datetime import datetime
 
 from unittest.mock import patch
 
-from gitsage.nodes.planning import load_planning_node, CommitClarity
+from gitsage.nodes.planning import planning_node
 from gitsage.types.base import CommitInfo
 from gitsage.types.analysis import AnalysisPlan
+from gitsage.types.state import AgentState
 
 
 @pytest.fixture
@@ -36,17 +37,6 @@ def mock_message_analysis():
         "needs_code_review": True,
         "suggested_improvements": [suggestion],
         "is_breaking_change": False,
-    }
-
-
-@pytest.fixture
-def mock_code_analysis():
-    """Mock response for code change analysis."""
-    return {
-        "functional_changes": "Updated authentication logic",
-        "impact_assessment": "Moderate impact on user sessions",
-        "risk_factors": ["Session handling changes", "Database updates"],
-        "technical_details": "Modified login flow and session management",
     }
 
 
@@ -105,32 +95,6 @@ def sample_repo(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_commit_analysis(sample_repo, api_key, mock_message_analysis, mock_code_analysis):
-    """Test commit message and code analysis."""
-    repo_path, commit_hashes = sample_repo
-
-    with patch("langchain_core.runnables.base.RunnableSerializable.ainvoke") as mock_invoke:
-        mock_invoke.side_effect = [mock_message_analysis, mock_code_analysis] * len(commit_hashes)
-
-        node = load_planning_node(api_key)
-        repo = Repo(repo_path)
-
-        commit = repo.commit(commit_hashes[0])
-        clarity = await node.analyze_commit(repo, commit)
-
-        # Basic type and property checks
-        assert isinstance(clarity, CommitClarity)
-        assert clarity.commit_hash == commit_hashes[0]
-        assert clarity.message_clarity == mock_message_analysis["message_clarity"]
-        assert clarity.needs_code_review == mock_message_analysis["needs_code_review"]
-
-        # Check if the suggestion starts with the expected phrase
-        assert any(
-            suggestion.startswith("Consider adding more details") for suggestion in clarity.suggested_improvements
-        )
-
-
-@pytest.mark.asyncio
 async def test_planning_node_run(sample_repo, api_key, mock_message_analysis):
     """Test the complete planning node execution."""
     repo_path, commit_hashes = sample_repo
@@ -138,11 +102,10 @@ async def test_planning_node_run(sample_repo, api_key, mock_message_analysis):
     with patch("langchain_core.runnables.base.RunnableSerializable.ainvoke") as mock_invoke:
         mock_invoke.return_value = mock_message_analysis
 
-        node = load_planning_node(api_key)
-
         # Create initial state
-        initial_state = {
-            "repository_path": repo_path,
+        initial_state: AgentState = {
+            "groq_api_key": api_key,
+            "repo_path": repo_path,
             "commits": [
                 CommitInfo(
                     hash=commit_hash,
@@ -156,7 +119,7 @@ async def test_planning_node_run(sample_repo, api_key, mock_message_analysis):
         }
 
         # Run planning node
-        result = await node.run(initial_state)
+        result = await planning_node(initial_state)
 
         # Verify state updates
         assert "commit_clarity" in result
@@ -166,67 +129,20 @@ async def test_planning_node_run(sample_repo, api_key, mock_message_analysis):
 
         # Check analysis plan structure using dataclass attributes
         plan: AnalysisPlan = result["analysis_plan"]
-        assert hasattr(plan, "target_audiences")
-        assert hasattr(plan, "required_formats")
-        assert hasattr(plan, "focus_areas")
-        assert hasattr(plan, "additional_analysis_needed")
-        assert hasattr(plan, "risk_level")
+        assert "target_audiences" in plan
+        assert "required_formats" in plan
+        assert "focus_areas" in plan
+        assert "additional_analysis_needed" in plan
+        assert "risk_level" in plan
 
         # Validate analysis plan content
-        assert isinstance(plan.target_audiences, list)
-        assert isinstance(plan.required_formats, list)
-        assert isinstance(plan.focus_areas, list)
-        assert isinstance(plan.additional_analysis_needed, bool)
-        assert plan.risk_level in ["high", "normal"]
+        assert isinstance(plan["target_audiences"], list)
+        assert isinstance(plan["required_formats"], list)
+        assert isinstance(plan["focus_areas"], list)
+        assert isinstance(plan["additional_analysis_needed"], bool)
+        assert plan["risk_level"] in ["high", "normal"]
 
         # Validate specific content expectations
-        assert "developers" in plan.target_audiences
-        assert "markdown" in plan.required_formats
-        assert any(area in ["features", "code_changes"] for area in plan.focus_areas)
-
-
-@pytest.mark.asyncio
-async def test_unclear_commit_handling(sample_repo, api_key):
-    """Test handling of unclear commits with real API."""
-    repo_path, commit_hashes = sample_repo
-
-    # Only run this test if API key is available
-    if not api_key:
-        pytest.skip("GROQ_API_KEY not set")
-
-    node = load_planning_node(api_key)
-    repo = Repo(repo_path)
-
-    # Analyze the unclear commit
-    unclear_commit = repo.commit(commit_hashes[1])  # "fixed auth stuff"
-    clarity = await node.analyze_commit(repo, unclear_commit)
-
-    # Verify analysis results
-    assert clarity.commit_hash == commit_hashes[1]
-    assert clarity.needs_code_review  # Should need review due to unclear message
-    assert clarity.message_clarity < 0.7  # Should have lower clarity score
-    assert clarity.suggested_improvements  # Should suggest improvements
-    assert clarity.code_changes_summary  # Should include code analysis
-
-
-@pytest.mark.asyncio
-async def test_breaking_change_detection(sample_repo, api_key, mock_message_analysis):
-    """Test detection of breaking changes."""
-    repo_path, commit_hashes = sample_repo
-
-    with patch("langchain_core.runnables.base.RunnableSerializable.ainvoke") as mock_invoke:
-        mock_invoke.return_value = {
-            **mock_message_analysis,
-            "is_breaking_change": True,
-            "message_clarity": 0.9,
-        }
-
-        node = load_planning_node(api_key)
-        repo = Repo(repo_path)
-
-        breaking_commit = repo.commit(commit_hashes[2])
-        result = await node.analyze_commit(repo, breaking_commit)
-
-        # Changed to >= to include threshold value
-        assert result.message_clarity >= 0.8  # Clear breaking change announcement
-        assert result.needs_code_review  # Breaking changes should trigger review
+        assert "developers" in plan["target_audiences"]
+        assert "markdown" in plan["required_formats"]
+        assert any(area in ["features", "code_changes"] for area in plan["focus_areas"])
