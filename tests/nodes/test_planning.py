@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 from gitsage.nodes.planning import load_planning_node, CommitClarity
 from gitsage.types.base import CommitInfo
+from gitsage.types.analysis import AnalysisPlan
 
 
 @pytest.fixture
@@ -163,13 +164,25 @@ async def test_planning_node_run(sample_repo, api_key, mock_message_analysis):
         assert "commits_needing_review" in result
         assert "analysis_plan" in result
 
-        # Check analysis plan structure
-        plan = result["analysis_plan"]
-        assert "target_audiences" in plan
-        assert "required_formats" in plan
-        assert "focus_areas" in plan
-        assert "additional_analysis_needed" in plan
-        assert "risk_level" in plan
+        # Check analysis plan structure using dataclass attributes
+        plan: AnalysisPlan = result["analysis_plan"]
+        assert hasattr(plan, "target_audiences")
+        assert hasattr(plan, "required_formats")
+        assert hasattr(plan, "focus_areas")
+        assert hasattr(plan, "additional_analysis_needed")
+        assert hasattr(plan, "risk_level")
+
+        # Validate analysis plan content
+        assert isinstance(plan.target_audiences, list)
+        assert isinstance(plan.required_formats, list)
+        assert isinstance(plan.focus_areas, list)
+        assert isinstance(plan.additional_analysis_needed, bool)
+        assert plan.risk_level in ["high", "normal"]
+
+        # Validate specific content expectations
+        assert "developers" in plan.target_audiences
+        assert "markdown" in plan.required_formats
+        assert any(area in ["features", "code_changes"] for area in plan.focus_areas)
 
 
 @pytest.mark.asyncio

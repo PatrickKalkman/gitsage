@@ -11,8 +11,9 @@ class AnalysisPlan:
     target_audiences: List[str]
     required_formats: List[str]
     focus_areas: List[str]
-    priority_labels: Dict[str, int]
     custom_categories: Optional[Dict[str, List[str]]] = None
+    additional_analysis_needed: bool = False
+    risk_level: str = "normal"
 
 
 @dataclass

@@ -1,11 +1,16 @@
 """Analysis Planning Node using LangChain and Groq for commit analysis."""
 
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from dataclasses import dataclass
+from datetime import datetime
 from git import Repo, Commit
 from langchain.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from langchain_core.output_parsers import JsonOutputParser
+
+from gitsage.types.state import AgentState
+from gitsage.types.analysis import AnalysisPlan
+from gitsage.types.base import CommitInfo
 
 
 @dataclass
@@ -25,7 +30,7 @@ class AnalysisPlanningNode:
     MESSAGE_ANALYSIS_TEMPLATE = """
     system
     You are an expert at analyzing git commits for clarity and completeness.
-    Given a commit message,you analyze its effectiveness in communicating changes.
+    Given a commit message, you analyze its effectiveness in communicating changes.
     Return only a JSON object with no additional code or text with your analysis.
 
     user
@@ -66,7 +71,6 @@ class AnalysisPlanningNode:
         """Initialize with Groq configuration."""
         self.llm = ChatGroq(groq_api_key=api_key, model=model_name)
 
-        # Initialize prompt templates
         self.message_analyzer = (
             PromptTemplate(
                 template=self.MESSAGE_ANALYSIS_TEMPLATE,
@@ -96,7 +100,6 @@ class AnalysisPlanningNode:
 
     async def analyze_commit(self, repo: Repo, commit: Commit) -> CommitClarity:
         """Analyze a single commit for clarity and needed analysis."""
-        # Analyze commit message
         message_analysis = await self.message_analyzer.ainvoke({"commit_message": commit.message})
 
         code_summary = None
@@ -118,17 +121,27 @@ class AnalysisPlanningNode:
             code_changes_summary=code_summary,
         )
 
-    async def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute the planning node's analysis."""
+    async def run(self, state: AgentState) -> AgentState:
+        """Execute the planning node's analysis with strong typing."""
         repo = Repo(state["repository_path"])
-        commits = state["commits"]
+        commits: List[CommitInfo] = state["commits"]
 
         # Analyze each commit
-        clarity_assessments = []
+        clarity_assessments: List[CommitClarity] = []
         for commit_info in commits:
             commit = repo.commit(commit_info.hash)
-            assessment = await self.analyze_commit(repo, commit)
-            clarity_assessments.append(assessment)
+            try:
+                assessment = await self.analyze_commit(repo, commit)
+                clarity_assessments.append(assessment)
+            except Exception as e:
+                state["errors"].append(
+                    {
+                        "node": "AnalysisPlanningNode",
+                        "commit": commit_info.hash,
+                        "error": str(e),
+                        "timestamp": datetime.now(),
+                    }
+                )
 
         # Determine overall analysis strategy
         unclear_commits = [a for a in clarity_assessments if a.needs_code_review]
@@ -136,27 +149,29 @@ class AnalysisPlanningNode:
             a.message_clarity < 0.6 or "breaking" in str(a.code_changes_summary).lower() for a in clarity_assessments
         )
 
-        # Update state with analysis results
-        new_state = {
-            **state,
-            "commit_clarity": clarity_assessments,
-            "commits_needing_review": [a.commit_hash for a in unclear_commits],
-            "analysis_plan": {
-                "target_audiences": [
-                    "developers",
-                    "technical_leads",
-                    "end_users" if not breaking_changes else "migration_team",
-                ],
-                "required_formats": ["markdown", "html"],
-                "focus_areas": ["code_changes", "breaking_changes", "technical_debt"]
+        # Create typed analysis plan
+        analysis_plan = AnalysisPlan(
+            target_audiences=[
+                "developers",
+                "technical_leads",
+                "end_users" if not breaking_changes else "migration_team",
+            ],
+            required_formats=["markdown", "html"],
+            focus_areas=(
+                ["code_changes", "breaking_changes", "technical_debt"]
                 if unclear_commits
-                else ["features", "improvements"],
-                "additional_analysis_needed": bool(unclear_commits),
-                "risk_level": "high" if breaking_changes else "normal",
-            },
-        }
+                else ["features", "improvements"]
+            ),
+            additional_analysis_needed=bool(unclear_commits),
+            risk_level="high" if breaking_changes else "normal",
+        )
 
-        return new_state
+        # Update state with strongly typed results
+        state["analysis_plan"] = analysis_plan
+        state["commit_clarity"] = clarity_assessments
+        state["commits_needing_review"] = [a.commit_hash for a in unclear_commits]
+
+        return state
 
 
 def load_planning_node(api_key: str, model_name: str = "mixtral-8x7b-32768") -> AnalysisPlanningNode:
