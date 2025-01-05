@@ -11,4 +11,4 @@ def test_version():
     This test ensures our build configuration is working correctly.
     """
     version = metadata.version("gitsage")
-    assert version == "0.1.0"
+    assert version == "0.8.1"
