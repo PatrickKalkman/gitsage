@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.11"]
 
     steps:
     - uses: actions/checkout@v4
@@ -56,8 +56,8 @@ jobs:
     - name: Get package metadata
       id: metadata
       run: |
-        echo "pkg_name=$(uv run python -c "from configparser import ConfigParser; p = ConfigParser(); p.read('pyproject.toml'); print(p['project']['name'])")" >> $GITHUB_OUTPUT
-        echo "version=$(uv run python -c "from configparser import ConfigParser; p = ConfigParser(); p.read('pyproject.toml'); print(p['project']['version'])")" >> $GITHUB_OUTPUT
+        echo "pkg_name=$(uv run python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['project']['name'])")" >> $GITHUB_OUTPUT
+        echo "version=$(uv run python -c "import tomli; print(tomli.load(open('pyproject.toml', 'rb'))['project']['version'])")" >> $GITHUB_OUTPUT
 
     - name: Store build artifacts
       uses: actions/upload-artifact@v4
