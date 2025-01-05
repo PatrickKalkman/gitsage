@@ -14,6 +14,7 @@ class APIChange:
     new_signature: str
     breaking: bool
     affected_endpoints: List[str]
+    commit_hash: str  # Add commit reference
 
 
 @dataclass
@@ -26,6 +27,7 @@ class DependencyUpdate:
     update_type: str  # 'major', 'minor', 'patch'
     changelog_url: str
     breaking: bool
+    commit_hash: str  # Add commit reference
 
 
 @dataclass
@@ -37,6 +39,7 @@ class SchemaChange:
     details: Dict[str, Any]
     migration_required: bool
     backward_compatible: bool
+    commit_hash: str  # Add commit reference
 
 
 @dataclass

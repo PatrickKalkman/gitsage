@@ -5,8 +5,8 @@ Example program demonstrating GitSage release notes generation.
 import argparse
 from pathlib import Path
 
-from gitsage.nodes.commit_discovery import load_discovery_node
-from gitsage.nodes.release_generator import load_release_generator
+from gitsage.nodes.commit_discovery_node import load_discovery_node
+from gitsage.nodes.release_generator_node import load_release_generator
 
 
 def format_release_notes(release_notes) -> str:
@@ -38,13 +38,9 @@ def format_release_notes(release_notes) -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate release notes for a Git repository"
-    )
+    parser = argparse.ArgumentParser(description="Generate release notes for a Git repository")
     parser.add_argument("repo_path", help="Path to the Git repository")
-    parser.add_argument(
-        "--output", "-o", help="Output file path (default: release_notes.md)"
-    )
+    parser.add_argument("--output", "-o", help="Output file path (default: release_notes.md)")
     parser.add_argument("--since", help="Generate notes since this Git reference")
     args = parser.parse_args()
 

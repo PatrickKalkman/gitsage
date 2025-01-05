@@ -4,7 +4,7 @@ import pytest
 from git import Repo
 from pathlib import Path
 
-from gitsage.nodes.commit_discovery import commit_discovery_node
+from gitsage.nodes.commit_discovery_node import commit_discovery_node
 from gitsage.types.state import AgentState
 
 

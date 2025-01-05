@@ -6,7 +6,6 @@ from typing import Dict, List, Optional, Any, TypedDict
 from .base import CommitInfo
 from .analysis import AnalysisPlan, ImpactAnalysis
 from .code import CodeContext
-from .content import ReleaseStructure
 from .render import RenderedContent
 
 
@@ -38,10 +37,7 @@ class AgentState(TypedDict):
     # Analysis Node Output
     impact_analysis: ImpactAnalysis
 
-    # Release Organization Node Output
-    release_structure: ReleaseStructure
-
-    # Format Renderer Node Output
+    # Release Notes Output
     rendered_content: RenderedContent
 
     # Global State

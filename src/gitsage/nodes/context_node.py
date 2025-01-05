@@ -41,7 +41,7 @@ def extract_file_changes(commit: Commit) -> Dict[str, Any]:
     return changes
 
 
-def identify_api_changes(changes: Dict[str, Any]) -> List[APIChange]:
+def identify_api_changes(changes: Dict[str, Any], commit_hash: str) -> List[APIChange]:
     """Extract API changes from modified files."""
     api_changes = []
     api_patterns = {
@@ -92,13 +92,14 @@ def identify_api_changes(changes: Dict[str, Any]) -> List[APIChange]:
                         new_signature=str([api[1] for api in added_apis]),
                         breaking=bool(removed_apis),  # Breaking if any APIs were removed
                         affected_endpoints=[file_path],
+                        commit_hash=commit_hash,
                     )
                 )
 
     return api_changes
 
 
-def detect_dependency_updates(changes: Dict[str, Any]) -> List[DependencyUpdate]:
+def detect_dependency_updates(changes: Dict[str, Any], commit_hash: str) -> List[DependencyUpdate]:
     """Extract dependency changes from package files."""
     updates = []
     dependency_patterns = {
@@ -125,13 +126,14 @@ def detect_dependency_updates(changes: Dict[str, Any]) -> List[DependencyUpdate]
                                 update_type="unknown",
                                 changelog_url="",
                                 breaking=False,
+                                commit_hash=commit_hash,
                             )
                         )
 
     return updates
 
 
-def analyze_schema_changes(changes: Dict[str, Any]) -> List[SchemaChange]:
+def analyze_schema_changes(changes: Dict[str, Any], commit_hash: str) -> List[SchemaChange]:
     """Extract schema changes from data model files."""
     schema_changes = []
     schema_patterns = {
@@ -159,6 +161,7 @@ def analyze_schema_changes(changes: Dict[str, Any]) -> List[SchemaChange]:
                                 backward_compatible=not any(
                                     term in patch.lower() for term in ["drop", "delete", "remove"]
                                 ),
+                                commit_hash=commit_hash,
                             )
                         )
 
@@ -188,9 +191,9 @@ def context_node(state: AgentState) -> AgentState:
 
                 # Update cumulative changes
                 affected_file_types.update(changes["file_types"])
-                all_api_changes.extend(identify_api_changes(changes))
-                all_dependency_updates.extend(detect_dependency_updates(changes))
-                all_schema_changes.extend(analyze_schema_changes(changes))
+                all_api_changes.extend(identify_api_changes(changes, commit_info.hash))
+                all_dependency_updates.extend(detect_dependency_updates(changes, commit_info.hash))
+                all_schema_changes.extend(analyze_schema_changes(changes, commit_info.hash))
 
             except Exception as e:
                 state.setdefault("errors", []).append(

@@ -8,7 +8,7 @@ from git.diff import Diff
 
 from gitsage.types.state import AgentState
 from gitsage.types.base import CommitInfo
-from gitsage.nodes.context import (
+from gitsage.nodes.context_node import (
     context_node,
     extract_file_changes,
     identify_api_changes,
@@ -102,7 +102,7 @@ def test_identify_api_changes(file_content, expected_count, expected_breaking):
 
     changes = {"patches": {"api/controller.py": file_content.decode()}, "modified_files": {"api/controller.py"}}
 
-    api_changes = identify_api_changes(changes)
+    api_changes = identify_api_changes(changes, "abc123")
 
     assert len(api_changes) == expected_count
     if expected_count > 0:
@@ -121,7 +121,7 @@ def test_detect_dependency_updates(file_name, content, expected_count, expected_
     """Test dependency update detection with version checking."""
     changes = {"patches": {file_name: content}}
 
-    updates = detect_dependency_updates(changes)
+    updates = detect_dependency_updates(changes, "abc123")
     assert len(updates) == expected_count
     if expected_count > 0:
         assert updates[0].new_version == expected_version
@@ -148,13 +148,13 @@ def test_analyze_schema_changes(file_path, content, expected_count, expected_mig
     """Test schema change detection with migration requirements."""
     changes = {"patches": {file_path: content}}
 
-    schema_changes = analyze_schema_changes(changes)
+    schema_changes = analyze_schema_changes(changes, "abc123")
     assert len(schema_changes) == expected_count
     if expected_count > 0:
         assert schema_changes[0].migration_required == expected_migration
 
 
-@patch("gitsage.nodes.context.Repo")
+@patch("gitsage.nodes.context_node.Repo")
 def test_context_node_integration(mock_repo_class, sample_state):
     """Test complete integration with all components."""
     # Setup mock repository
@@ -170,18 +170,21 @@ def test_context_node_integration(mock_repo_class, sample_state):
     api_diff.a_path = api_diff.b_path = "api/users.py"
     api_diff.new_file = False
     api_diff.deleted_file = False
+    api_diff.commit_hash = "abc123"
     api_diff.diff = b"+def new_user_api():\n    pass\n-def old_user_api():\n    pass"
 
     dep_diff = Mock(spec=Diff)
     dep_diff.a_path = dep_diff.b_path = "requirements.txt"
     dep_diff.new_file = False
     dep_diff.deleted_file = False
+    dep_diff.commit_hash = "abc123"
     dep_diff.diff = b"+requests==2.26.0\n-requests==2.25.0"
 
     schema_diff = Mock(spec=Diff)
     schema_diff.a_path = schema_diff.b_path = "models/user.py"
     schema_diff.new_file = True
     schema_diff.deleted_file = False
+    schema_diff.commit_hash = "abc123"
     schema_diff.diff = b"class User:\n    id: int\n    name: str"
 
     mock_commit.diff.return_value = [api_diff, dep_diff, schema_diff]
