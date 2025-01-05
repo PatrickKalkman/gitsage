@@ -37,20 +37,37 @@ Commit Information:
 Technical Context:
 {technical_context}
 
-Return a strict JSON response with exactly these fields as shown in this example:
+Return a strict JSON response with exactly these fields:
 {{
-    "title": "A clear, concise title",
-    "description": "Detailed explanation",
-    "impact": "User-facing impact description",
+    "title": "A clear concise title without quotes or special characters",
+    "description": "A clear description without file paths or technical details",
+    "impact": "A user-focused impact description",
     "breaking": false
 }}
 
-Important JSON formatting rules:
-1. Do not escape underscores (_)
-2. Use only \n for newlines
-3. No additional fields
-4. No comments
-5. Keep it as a single-line JSON without pretty printing
+IMPORTANT FORMATTING RULES:
+1. Never use nested quotes in strings
+2. Remove any underscores or special characters
+3. Keep all content on a single line
+4. Avoid technical details like file paths
+5. For the title field:
+   - Keep it short and clear
+   - No technical terms
+   - No quotes inside the value
+6. For the description field:
+   - Focus on what changed, not how
+   - Avoid listing files or paths
+7. For the impact field:
+   - Focus on user-visible changes
+   - Keep it simple and clear
+
+Example with good formatting:
+{{
+    "title": "Updated channel logo styling",
+    "description": "Changed the background color of channel logos to improve visibility",
+    "impact": "Channel logos now have a clearer background making them easier to read",
+    "breaking": false
+}}
 """
 
 
@@ -131,7 +148,6 @@ async def analyze_change(commit_info: Any, technical_context: Dict[str, Any], ch
     # Get LLM analysis
     try:
         analysis = await change_analyzer.ainvoke(analysis_input)
-
         return ChangeAnalysis(
             commit_hash=commit_info.hash,
             timestamp=commit_info.date,
