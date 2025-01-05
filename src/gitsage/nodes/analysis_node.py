@@ -181,7 +181,7 @@ async def analysis_node(state: AgentState) -> AgentState:
 
         logger.info("Executing Analysis Node")
         # Initialize LLM and chains
-        llm = ChatGroq(groq_api_key=state["groq_api_key"], model="mixtral-8x7b-32768")
+        llm = ChatGroq(groq_api_key=state["groq_api_key"], model=state["model"])
 
         change_analyzer = (
             PromptTemplate(template=CHANGE_ANALYSIS_TEMPLATE, input_variables=["commit_info", "technical_context"])

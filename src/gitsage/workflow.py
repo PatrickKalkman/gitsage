@@ -49,6 +49,7 @@ async def run_workflow_async(config: Dict[str, Any]) -> AgentState:
     initial_state: AgentState = {
         "repo_path": config["repo_path"],
         "groq_api_key": config["groq_api_key"],
+        "model": config["model"],
         "errors": [],
         "warnings": [],
     }
@@ -80,9 +81,10 @@ if __name__ == "__main__":
         sys.exit(1)
 
     config = {
-        "repo_path": "/Users/patrickkalkman/projects/sb/EPG-And-Live-TV",
+        "repo_path": "/Users/patrickkalkman/projects/sb/Video-On-Demand-TV-Launcher",
         "groq_api_key": groq_api_key,
-        "output_dir": "release_notes",  # Directory for saving release notes
+        "output_dir": "release_notes",
+        "model": "mixtral-8x7b-32768",
     }
     final_state = run_workflow(config)
 

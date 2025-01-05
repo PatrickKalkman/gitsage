@@ -114,7 +114,7 @@ async def planning_node(state: AgentState) -> AgentState:
         if "groq_api_key" not in state:
             raise ValueError("groq_api_key is required in AgentState")
 
-        llm = ChatGroq(groq_api_key=state["groq_api_key"], model="mixtral-8x7b-32768")
+        llm = ChatGroq(groq_api_key=state["groq_api_key"], model=state["model"])
 
         message_analyzer = (
             PromptTemplate(template=MESSAGE_ANALYSIS_TEMPLATE, input_variables=["commit_message"])

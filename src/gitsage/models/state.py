@@ -18,6 +18,7 @@ class AgentState(TypedDict):
     # Input
     repo_path: str
     groq_api_key: str
+    model: str
 
     # CommitDiscovery Node Output
     commits: List[CommitInfo]
