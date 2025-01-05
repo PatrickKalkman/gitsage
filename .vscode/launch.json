@@ -1,16 +1,16 @@
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Python: Test Discovery",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/.venv/bin/pytest", // Adjust path to your pytest executable
-      "args": [
-        "./tests" // or whatever folder you want to test
-      ],
-      "console": "integratedTerminal",
-      "justMyCode": true
-    }
-  ]
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Run Workflow",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/gitsage/workflow.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            }
+        }
+    ]
 }

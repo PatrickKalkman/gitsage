@@ -3,12 +3,13 @@
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
+from loguru import logger
 from langchain.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from langchain_core.output_parsers import JsonOutputParser
 
-from gitsage.types.state import AgentState
-from gitsage.types.analysis import ImpactAnalysis
+from gitsage.models.state import AgentState
+from gitsage.models.analysis import ImpactAnalysis
 
 
 @dataclass
@@ -36,11 +37,20 @@ Commit Information:
 Technical Context:
 {technical_context}
 
-Provide a JSON response with these fields:
-- title: A clear, concise title for the change
-- description: Detailed explanation combining commit and technical information
-- impact: User-facing impact of the change
-- breaking: boolean indicating if this is a breaking change
+Return a strict JSON response with exactly these fields as shown in this example:
+{{
+    "title": "A clear, concise title",
+    "description": "Detailed explanation",
+    "impact": "User-facing impact description",
+    "breaking": false
+}}
+
+Important JSON formatting rules:
+1. Do not escape underscores (_)
+2. Use only \n for newlines
+3. No additional fields
+4. No comments
+5. Keep it as a single-line JSON without pretty printing
 """
 
 
@@ -153,6 +163,7 @@ async def analysis_node(state: AgentState) -> AgentState:
         if "analysis_plan" not in state:
             raise ValueError("analysis_plan is required in AgentState")
 
+        logger.info("Executing Analysis Node")
         # Initialize LLM and chains
         llm = ChatGroq(groq_api_key=state["groq_api_key"], model="mixtral-8x7b-32768")
 
@@ -165,6 +176,7 @@ async def analysis_node(state: AgentState) -> AgentState:
         # Process each commit chronologically
         analyzed_changes: List[ChangeAnalysis] = []
         for commit in sorted(state["commits"], key=lambda x: x.date):
+            logger.debug(f"Analyzing commit: {commit.hash} - {commit.message}")
             try:
                 # Get technical context if available
                 technical_context = _create_technical_context(commit.hash, state["code_context"])

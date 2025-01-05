@@ -7,8 +7,8 @@ from git import Repo, NULL_TREE, Tag
 from git.objects.commit import Commit
 from datetime import datetime
 
-
-from gitsage.types.state import AgentState, CommitInfo
+from loguru import logger
+from gitsage.models.state import AgentState, CommitInfo
 
 
 def _get_release_tags(repo: Repo) -> List[Tag]:
@@ -89,6 +89,8 @@ def commit_discovery_node(state: AgentState) -> AgentState:
     if "repo_path" not in state:
         raise ValueError("repo_path is required in AgentState")
 
+    logger.info("Executing Commit Discovery Node")
+
     repo = Repo(state["repo_path"])
     if "since_ref" in state:
         start_ref = state["since_ref"]
@@ -109,6 +111,8 @@ def commit_discovery_node(state: AgentState) -> AgentState:
 
     commits = _get_commits(repo, start_ref, end_ref)
     tags = _get_release_tags(repo)
+
+    logger.info(f"Discovered {len(commits)} commits")
 
     # Update state with discoveries
     new_state: AgentState = {

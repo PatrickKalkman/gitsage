@@ -12,7 +12,7 @@ import os
 import sys
 
 from gitsage.nodes.commit_discovery_node import load_discovery_node
-from gitsage.types.state import AgentState
+from gitsage.models.state import AgentState
 
 
 def parse_args():

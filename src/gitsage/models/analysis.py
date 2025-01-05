@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Any
+from .code import ChangeAnalysis
 
 
 @dataclass
@@ -20,8 +21,13 @@ class AnalysisPlan:
 class ImpactAnalysis:
     """Analysis of changes and their impact."""
 
-    breaking_changes: List[Dict[str, Any]]
-    security_implications: List[Dict[str, Any]]
-    performance_impacts: List[Dict[str, Any]]
-    compatibility_notes: List[str]
-    upgrade_requirements: List[str]
+    changes: List[ChangeAnalysis]  # All analyzed changes
+    breaking_changes: List[ChangeAnalysis]  # Changes marked as breaking
+    target_audiences: List[str]  # Who needs to know about these changes
+    risk_level: str  # Risk assessment of the changes
+
+    # Additional metadata for detailed analysis
+    security_implications: List[Dict[str, Any]] = None
+    performance_impacts: List[Dict[str, Any]] = None
+    compatibility_notes: List[str] = None
+    upgrade_requirements: List[str] = None

@@ -5,8 +5,9 @@ from git import Repo, Commit, NULL_TREE
 import re
 from pathlib import Path
 
-from gitsage.types.state import AgentState
-from gitsage.types.code import APIChange, DependencyUpdate, SchemaChange, CodeContext
+from loguru import logger
+from gitsage.models.state import AgentState
+from gitsage.models.code import APIChange, DependencyUpdate, SchemaChange, CodeContext
 
 
 def extract_file_changes(commit: Commit) -> Dict[str, Any]:
@@ -174,6 +175,7 @@ def context_node(state: AgentState) -> AgentState:
         if "repo_path" not in state:
             raise ValueError("repo_path is required in AgentState")
 
+        logger.info("Executing Context Node")
         repo = Repo(state["repo_path"])
         commits = state["commits"]
 

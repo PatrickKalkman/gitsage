@@ -1,7 +1,8 @@
 """Types for code analysis and context extraction."""
 
 from dataclasses import dataclass
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
+from datetime import datetime
 
 
 @dataclass
@@ -14,7 +15,7 @@ class APIChange:
     new_signature: str
     breaking: bool
     affected_endpoints: List[str]
-    commit_hash: str  # Add commit reference
+    commit_hash: str
 
 
 @dataclass
@@ -27,7 +28,7 @@ class DependencyUpdate:
     update_type: str  # 'major', 'minor', 'patch'
     changelog_url: str
     breaking: bool
-    commit_hash: str  # Add commit reference
+    commit_hash: str
 
 
 @dataclass
@@ -39,7 +40,21 @@ class SchemaChange:
     details: Dict[str, Any]
     migration_required: bool
     backward_compatible: bool
-    commit_hash: str  # Add commit reference
+    commit_hash: str
+
+
+@dataclass
+class ChangeAnalysis:
+    """Analyzed change combining commit and technical context."""
+
+    commit_hash: str
+    timestamp: datetime
+    title: str
+    description: str
+    impact: str
+    technical_details: Optional[Dict]
+    breaking: bool
+    source_metadata: Dict[str, Any]  # For debugging/tracing
 
 
 @dataclass

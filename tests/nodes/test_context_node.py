@@ -6,8 +6,8 @@ from datetime import datetime
 from git import Repo, Commit
 from git.diff import Diff
 
-from gitsage.types.state import AgentState
-from gitsage.types.base import CommitInfo
+from gitsage.models.state import AgentState
+from gitsage.models.base import CommitInfo
 from gitsage.nodes.context_node import (
     context_node,
     extract_file_changes,

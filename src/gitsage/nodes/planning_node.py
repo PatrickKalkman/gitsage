@@ -3,13 +3,15 @@
 from typing import List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
+
+from loguru import logger
 from git import Repo, Commit
 from langchain.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from langchain_core.output_parsers import JsonOutputParser
 
-from gitsage.types.state import AgentState
-from gitsage.types.base import CommitInfo
+from gitsage.models.state import AgentState
+from gitsage.models.base import CommitInfo
 
 
 @dataclass
@@ -31,11 +33,21 @@ Given a commit message, analyze its effectiveness in communicating changes.
 Commit message to analyze:
 {commit_message}
 
-Provide a JSON response with these keys:
-- message_clarity: float between 0 and 1
-- needs_code_review: boolean
-- suggested_improvements: list of strings
-- is_breaking_change: boolean
+Return a strict JSON response with exactly these fields as shown in this example:
+{{
+    "message_clarity": 0.8,
+    "needs_code_review": false,
+    "suggested_improvements": ["Add more context about the feature", "Include related ticket numbers"],
+    "is_breaking_change": false
+}}
+
+Important JSON formatting rules:
+1. message_clarity must be a float between 0 and 1
+2. needs_code_review must be a boolean
+3. suggested_improvements must be an array of strings
+4. is_breaking_change must be a boolean
+5. Do not add any additional fields
+6. Keep it as a single-line JSON without pretty printing
 """
 
 CODE_ANALYSIS_TEMPLATE = """
@@ -57,17 +69,37 @@ async def analyze_single_commit(commit: Commit, message_analyzer: Any, state: Ag
     """Analyze a single commit with error handling."""
     try:
         # Analyze commit message
+        logger.debug(f"Analyzing message for commit: {commit.hexsha[:8]}")
         message_analysis = await message_analyzer.ainvoke({"commit_message": commit.message})
 
-        return CommitClarity(
+        # Validate required fields
+        required_fields = ["message_clarity", "needs_code_review", "suggested_improvements"]
+        missing_fields = [field for field in required_fields if field not in message_analysis]
+
+        if missing_fields:
+            logger.error(f"Missing fields in LLM response for commit {commit.hexsha[:8]}: {missing_fields}")
+            raise ValueError(f"Missing required fields in LLM response: {missing_fields}")
+
+        # Ensure suggested_improvements is always a list
+        if not isinstance(message_analysis["suggested_improvements"], list):
+            message_analysis["suggested_improvements"] = []
+            logger.warning(f"Fixed invalid suggested_improvements format for commit {commit.hexsha[:8]}")
+
+        # Create CommitClarity object
+        clarity = CommitClarity(
             commit_hash=commit.hexsha,
             message_clarity=float(message_analysis["message_clarity"]),
             needs_code_review=bool(message_analysis["needs_code_review"]),
             suggested_improvements=message_analysis["suggested_improvements"],
         )
 
+        logger.debug(f"Successfully analyzed commit {commit.hexsha[:8]} with clarity score: {clarity.message_clarity}")
+        return clarity
+
     except Exception as e:
         # Record error and return None
+        error_msg = f"Error analyzing commit {commit.hexsha[:8]}: {str(e)}"
+        logger.error(error_msg)
         state["errors"].append(
             {"node": "planning_node", "commit": commit.hexsha, "error": str(e), "timestamp": datetime.now()}
         )
@@ -76,6 +108,7 @@ async def analyze_single_commit(commit: Commit, message_analyzer: Any, state: Ag
 
 async def planning_node(state: AgentState) -> AgentState:
     """Execute the planning node's analysis with comprehensive error handling."""
+    logger.info("Executing Planning Node")
     try:
         # Initialize LLM and chains
         if "groq_api_key" not in state:
@@ -99,6 +132,7 @@ async def planning_node(state: AgentState) -> AgentState:
         for commit_info in commits:
             try:
                 commit = repo.commit(commit_info.hash)
+                logger.debug(f"Analyzing commit: {commit_info.hash} - {commit_info.message}")
                 assessment = await analyze_single_commit(
                     commit=commit,
                     message_analyzer=message_analyzer,
