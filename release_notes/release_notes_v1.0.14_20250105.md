@@ -6,16 +6,18 @@ Generated on: 2025-01-03
 This release includes 4 changes:
 - 4 improvements and fixes
 
+**Note:** This release has been marked as `high` risk.
+
 ## Changes & Improvements
 
-- **Signed Geniox Launcher release 1.0.13 with platform keys**  
-  The Geniox Launcher release 1.0.13 has been signed with platform keys for secure distribution
+- **Security Update** 
+  Improved application security with enhanced signing
 
-- **Pairing screen text updated in Geniox variant**  
-  Improved the pairing screen text to show a box instead of 'FS Clickplay-box'
+- **Pairing Screen Update**  
+  The pairing screen now displays a box instead of a clickplay box for Geniox variant
 
-- **Self Update Screen Now Shows Green Checkmark**  
-  The self update screen will now display a green checkmark when no updates are available
+- **Update Indicator Change**  
+  The update screen now displays a green checkmark when no updates are available
 
-- **Released Geniox version 1.0.14 with updated notes**  
-  The latest Geniox version includes updated release notes and launcher files
+- **New Release Available**  
+  Added new version of the application

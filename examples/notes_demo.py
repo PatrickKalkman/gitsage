@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 
 from gitsage.nodes.commit_discovery_node import load_discovery_node
-from gitsage.nodes.release_generator_node import load_release_generator
+from gitsage.nodes.release_notes_renderer_node import load_release_generator
 
 
 def format_release_notes(release_notes) -> str:

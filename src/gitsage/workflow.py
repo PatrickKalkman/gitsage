@@ -81,7 +81,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     config = {
-        "repo_path": "/Users/patrickkalkman/projects/sb/Video-On-Demand-TV-Launcher",
+        "repo_path": "/Users/patrickkalkman/projects/test/fastify",
         "groq_api_key": groq_api_key,
         "output_dir": "release_notes",
         "model": "mixtral-8x7b-32768",
