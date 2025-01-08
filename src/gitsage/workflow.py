@@ -4,6 +4,7 @@ from typing import Dict, Any
 import asyncio
 import os
 import sys
+import argparse
 from datetime import datetime
 from loguru import logger
 from dotenv import load_dotenv
@@ -18,9 +19,7 @@ from gitsage.nodes.release_notes_renderer_node import release_notes_renderer_nod
 
 
 def create_workflow(config: Dict[str, Any]) -> StateGraph:
-    """
-    Create the GitSage workflow graph.
-    """
+    """Create the GitSage workflow graph."""
     workflow = StateGraph(AgentState)
 
     # Add nodes
@@ -43,9 +42,7 @@ def create_workflow(config: Dict[str, Any]) -> StateGraph:
 
 
 async def run_workflow_async(config: Dict[str, Any]) -> AgentState:
-    """
-    Run the GitSage workflow asynchronously and return the final state.
-    """
+    """Run the GitSage workflow asynchronously and return the final state."""
     initial_state: AgentState = {
         "repo_path": config["repo_path"],
         "groq_api_key": config["groq_api_key"],
@@ -55,37 +52,52 @@ async def run_workflow_async(config: Dict[str, Any]) -> AgentState:
     }
 
     app = create_workflow(config)
-
     final_state = None
     async for state in app.astream(initial_state):
         final_state = list(state.values())[0]
         if "errors" in final_state and final_state["errors"]:
-            print("Errors encountered:", final_state["errors"])
+            logger.error("Errors encountered:", final_state["errors"])
 
     return final_state
 
 
 def run_workflow(config: Dict[str, Any]) -> AgentState:
-    """
-    Synchronous wrapper for the async workflow.
-    """
+    """Synchronous wrapper for the async workflow."""
     return asyncio.run(run_workflow_async(config))
 
 
-if __name__ == "__main__":
-    load_dotenv()
+def main():
+    parser = argparse.ArgumentParser(description="Generate release notes using GitSage")
+    parser.add_argument("--repo-path", type=str, help="Path to the Git repository", default=".")
+    parser.add_argument("--output-dir", type=str, help="Output directory for release notes", default="release_notes")
+    parser.add_argument(
+        "--model",
+        type=str,
+        choices=["mixtral-8x7b-32768", "llama-3.2-3b-preview"],
+        help="LLM model to use",
+        default="mixtral-8x7b-32768",
+    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
+    args = parser.parse_args()
 
+    load_dotenv()
     groq_api_key = os.getenv("GROQ_API_KEY")
     if not groq_api_key:
         logger.error("GROQ_API_KEY environment variable is not set")
         sys.exit(1)
 
+    if not args.verbose:
+        logger.remove()
+        logger.add(sys.stderr, level="INFO")
+
     config = {
-        "repo_path": "/Users/patrickkalkman/projects/test/fastify",
+        "repo_path": os.path.abspath(args.repo_path),
         "groq_api_key": groq_api_key,
-        "output_dir": "release_notes",
-        "model": "mixtral-8x7b-32768",
+        "output_dir": args.output_dir,
+        "model": args.model,
     }
+
+    logger.info(f"Analyzing repository: {config['repo_path']}")
     final_state = run_workflow(config)
 
     logger.info("Workflow completed!")
@@ -94,36 +106,26 @@ if __name__ == "__main__":
     logger.info(f"Found {len(final_state['code_context'].dependency_updates)} dependency updates")
     logger.info(f"Found {len(final_state['code_context'].schema_changes)} schema changes")
 
-    # Add logging for rendered content
     if final_state.get("rendered_content"):
-        logger.info("Successfully generated release notes")
-        if final_state["rendered_content"].markdown:
-            # Create output directory if it doesn't exist
-            output_dir = config.get("output_dir", "release_notes")
-            os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(args.output_dir, exist_ok=True)
+        version = final_state.get("last_tag", "unreleased")
+        date_str = datetime.now().strftime("%Y%m%d")
+        filename = f"release_notes_{version}_{date_str}.md"
+        filepath = os.path.join(args.output_dir, filename)
 
-            # Generate filename using version and date
-            version = final_state.get("last_tag", "unreleased")
-            date_str = datetime.now().strftime("%Y%m%d")
-            filename = f"release_notes_{version}_{date_str}.md"
-            filepath = os.path.join(output_dir, filename)
-
-            # Save markdown content
-            try:
-                with open(filepath, "w", encoding="utf-8") as f:
-                    f.write(final_state["rendered_content"].markdown)
-                logger.info(f"Release notes saved to: {filepath}")
-            except Exception as e:
-                logger.error(f"Failed to save release notes: {str(e)}")
-                final_state["errors"].append(
-                    {
-                        "node": "workflow",
-                        "error": f"Failed to save release notes: {str(e)}",
-                        "timestamp": datetime.now(),
-                    }
-                )
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(final_state["rendered_content"].markdown)
+            logger.info(f"Release notes saved to: {filepath}")
+        except Exception as e:
+            logger.error(f"Failed to save release notes: {str(e)}")
 
     if final_state.get("errors"):
-        logger.info("Errors encountered during processing:")
+        logger.error("Errors encountered during processing:")
         for error in final_state["errors"]:
-            logger.info(f"- {error['node']}: {error['error']}")
+            logger.error(f"- {error['node']}: {error['error']}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

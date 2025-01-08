@@ -50,20 +50,6 @@ Important JSON formatting rules:
 6. Keep it as a single-line JSON without pretty printing
 """
 
-CODE_ANALYSIS_TEMPLATE = """
-You are an expert at analyzing git code changes and providing clear summaries.
-
-Analyze these changes:
-Commit Message: {commit_message}
-Code Changes: {code_changes}
-
-Provide a JSON response with these keys:
-- functional_changes: string describing what changed functionally
-- impact_assessment: string describing the impact
-- risk_factors: list of potential risks
-- technical_details: string with relevant details
-"""
-
 
 async def analyze_single_commit(commit: Commit, message_analyzer: Any, state: AgentState) -> CommitClarity:
     """Analyze a single commit with error handling."""
