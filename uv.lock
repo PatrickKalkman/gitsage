@@ -464,7 +464,7 @@ wheels = [
 
 [[package]]
 name = "gitsage"
-version = "0.1.0"
+version = "0.8.1"
 source = { editable = "." }
 dependencies = [
     { name = "gitpython" },
