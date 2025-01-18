@@ -1,5 +1,8 @@
 # GitSage: AI-Powered Release Notes Generator
 
+> **Implementation Details:** For an in-depth look at GitSage's architecture and development process, read our Medium article:  
+> [GitSage: An AI Agent for Automated Release Notes](https://medium.com/ai-advances/gitsage-an-ai-agent-for-automated-release-notes-0b6a5efb5c79)
+
 ![GitSage Cover](cover.jpg)
 
 [![GitHub Actions Status](https://img.shields.io/github/actions/workflow/status/PatrickKalkman/gitsage/ci.yml?branch=main)](https://github.com/PatrickKalkman/gitsage/actions)
