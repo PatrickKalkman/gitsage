@@ -1,12 +1,13 @@
 # GitSage: AI-Powered Release Notes Generator
 
-[![GitHub Actions Status](https://img.shields.io/github/actions/workflow/status/PatrickKalkman/gitsage/ci.yml?branch=master)](https://github.com/PatrickKalkman/gitsage/actions)
+![GitSage Cover](cover.jpg)
+
+[![GitHub Actions Status](https://img.shields.io/github/actions/workflow/status/PatrickKalkman/gitsage/ci.yml?branch=main)](https://github.com/PatrickKalkman/gitsage/actions)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![GitHub stars](https://img.shields.io/github/stars/PatrickKalkman/gitsage)](https://github.com/PatrickKalkman/gitsage/stargazers)
-[![GitHub contributors](https://img.shields.io/github/contributors/PatrickKalkman/gitsage)](https://github.com/PatrickKalkman/gitsage/graphs/contributors)
 [![GitHub last commit](https://img.shields.io/github/last-commit/PatrickKalkman/gitsage)](https://github.com/PatrickKalkman/gitsage)
 [![open issues](https://img.shields.io/github/issues/PatrickKalkman/gitsage)](https://github.com/PatrickKalkman/gitsage/issues)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://makeapullrequest.com)
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 
 GitSage transforms your Git commit history into polished, user-friendly release notes by combining large language models with intelligent code analysis. This tool bridges the gap between developer activities and user documentation, automating the creation of meaningful release notes that serve both technical and non-technical audiences.
 
