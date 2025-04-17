@@ -1,20 +1,21 @@
 """GitSage workflow integration using LangGraph for orchestration."""
 
-from typing import Dict, Any
+import argparse
 import asyncio
 import os
 import sys
-import argparse
 from datetime import datetime
-from loguru import logger
+from typing import Any, Dict
+
 from dotenv import load_dotenv
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
+from loguru import logger
 
 from gitsage.models.state import AgentState
-from gitsage.nodes.commit_discovery_node import commit_discovery_node
-from gitsage.nodes.planning_node import planning_node
-from gitsage.nodes.context_node import context_node
 from gitsage.nodes.analysis_node import analysis_node
+from gitsage.nodes.commit_discovery_node import commit_discovery_node
+from gitsage.nodes.context_node import context_node
+from gitsage.nodes.planning_node import planning_node
 from gitsage.nodes.release_notes_renderer_node import release_notes_renderer_node
 
 
@@ -73,9 +74,9 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        choices=["mixtral-8x7b-32768", "llama-3.2-3b-preview"],
+        choices=["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant"],
         help="LLM model to use",
-        default="mixtral-8x7b-32768",
+        default="llama-3.1-8b-instant",
     )
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     args = parser.parse_args()
